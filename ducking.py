@@ -24,14 +24,18 @@ def carregar_configuracoes():
 
 
 def get_playing_players():
+    """Retorna o nome do player que está tocando agora (exceto Spotify e GSConnect)."""
     try:
         result = subprocess.run(["playerctl", "-l"], capture_output=True, text=True)
         players = result.stdout.strip().split("\n")
 
-        playing_other = False
-
         for player in players:
             if not player:
+                continue
+
+            # Filtro inteligente: ignora Spotify (local ou remoto) e GSConnect (controles remotos)
+            player_lower = player.lower()
+            if "spotify" in player_lower or player.startswith("GSConnect"):
                 continue
 
             status_result = subprocess.run(
@@ -39,16 +43,12 @@ def get_playing_players():
             )
             status = status_result.stdout.strip()
 
-            if player.startswith("spotify"):
-                continue
-
             if status == "Playing":
-                playing_other = True
-                break
+                return player
 
-        return playing_other
-    except FileNotFoundError:
-        return False
+        return None
+    except Exception:
+        return None
 
 
 def set_spotify_volume(volume):
@@ -69,15 +69,15 @@ def main():
         tempo_espera = int(config.get("tempo_verificacao", 1))
 
         # 2. Verifica quem está tocando
-        is_other_playing = get_playing_players()
+        trigger_player = get_playing_players()
 
         # 3. Aplica a lógica de ducking com os valores do JSON
-        if is_other_playing and not ducked:
-            print(f"▶️ Abaixando o Spotify para {vol_baixo}...")
+        if trigger_player and not ducked:
+            print(f"▶️ Abaixando o Spotify para {vol_baixo} (Trigger: {trigger_player})...")
             set_spotify_volume(vol_baixo)
             ducked = True
 
-        elif not is_other_playing and ducked:
+        elif not trigger_player and ducked:
             print(f"⏸️ Restaurando o Spotify para {vol_alto}...")
             set_spotify_volume(vol_alto)
             ducked = False

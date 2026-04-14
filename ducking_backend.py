@@ -29,8 +29,12 @@ def outro_app_esta_tocando():
         players = result.stdout.strip().split("\n")
 
         for player in players:
-            # Ignora strings vazias e o próprio Spotify
-            if not player or player.startswith("spotify"):
+            if not player:
+                continue
+
+            # Filtro inteligente: ignora Spotify (local ou remoto) e GSConnect (controles remotos)
+            player_lower = player.lower()
+            if "spotify" in player_lower or player.startswith("GSConnect"):
                 continue
 
             # Checa o status do player atual
